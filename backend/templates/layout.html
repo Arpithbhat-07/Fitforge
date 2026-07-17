@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FitForge Gym</title>
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background-color: #0B0B0B;
+      color: #FFFFFF;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrapper {
+      width: 100%;
+      background-color: #0B0B0B;
+      padding: 40px 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #171717;
+      border: 1px solid #2A2A2A;
+      overflow: hidden;
+    }
+    .body {
+      padding: 40px;
+      color: #CFCFCF;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    h1, h2, h3 {
+      color: #FFFFFF;
+      margin-top: 0;
+    }
+    a {
+      color: #FF5A1F;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <!-- HEADER COMPONENT -->
+      {{ header }}
+      
+      <!-- BODY CONTENT -->
+      <div class="body">
+        {{ content }}
+      </div>
+      
+      <!-- FOOTER COMPONENT -->
+      {{ footer }}
+    </div>
+  </div>
+</body>
+</html>

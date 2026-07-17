@@ -1,0 +1,18 @@
+<h2>Session Reservation Confirmation</h2>
+<p>Hi {{ customer_name }},</p>
+
+<p>Your session reservation has been processed. Here are the booking details:</p>
+
+{{ booking_details }}
+
+<p><strong>Status:</strong> <span style="color: {{ status_color }}; font-weight: bold; text-transform: uppercase;">{{ status }}</span></p>
+
+{{ callout }}
+
+<p>If you need to reschedule or cancel, please get in touch with us at least 12 hours in advance.</p>
+
+<div style="text-align: center; margin: 30px 0;">
+  {{ action_button }}
+</div>
+
+<p>Train hard,<br><strong>Team FitForge</strong></p>
