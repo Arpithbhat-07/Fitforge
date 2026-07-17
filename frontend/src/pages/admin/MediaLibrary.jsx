@@ -26,7 +26,10 @@ export default function MediaLibrary() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [page, folder, q]);
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, folder, q]);
 
   const upload = async (file) => {
     if (!file) return;

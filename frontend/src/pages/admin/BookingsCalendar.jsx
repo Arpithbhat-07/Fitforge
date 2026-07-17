@@ -56,6 +56,7 @@ export default function BookingsCalendar() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTrainer]);
 
   const updateStatus = async (bookingId, newStatus) => {

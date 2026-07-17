@@ -33,7 +33,10 @@ export default function CrudPage({ resource, title, subtitle, fields, columns, d
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [resource]);
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resource]);
 
   // Unsaved changes browser prompt
   useEffect(() => {

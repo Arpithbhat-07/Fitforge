@@ -28,7 +28,10 @@ export default function InquiriesAdmin() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [q, status, page]);
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, status, page]);
 
   const totalPages = Math.max(1, Math.ceil(total / 15));
 

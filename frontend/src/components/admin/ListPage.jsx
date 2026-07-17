@@ -22,7 +22,10 @@ export default function ListPage({ endpoint, title, subtitle, columns, testid, c
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [endpoint, page, q]);
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endpoint, page, q]);
 
   const totalPages = Math.max(1, Math.ceil(total / 15));
 
