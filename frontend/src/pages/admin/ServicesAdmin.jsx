@@ -6,13 +6,12 @@ export default function ServicesAdmin() {
       resource="services"
       title="Programs"
       subtitle="Content Management"
-      defaultForm={{ title: "", description: "", icon: "Dumbbell", image: "", order: 0, is_active: true }}
+      defaultForm={{ title: "", description: "", icon: "Dumbbell", order: 0, is_active: true }}
       fields={[
         { name: "title", label: "Title", type: "text", colSpan: 2 },
         { name: "description", label: "Description", type: "textarea", colSpan: 2, rows: 3 },
-        { name: "icon", label: "Lucide Icon Name", type: "text", placeholder: "Dumbbell, Flame, Heart..." },
+        { name: "icon", label: "Program Icon", type: "icon", colSpan: 2 },
         { name: "order", label: "Display Order", type: "number" },
-        { name: "image", label: "Image URL", type: "image", colSpan: 2 },
         { name: "is_active", label: "Active", type: "switch" },
       ]}
       columns={[
@@ -24,3 +23,4 @@ export default function ServicesAdmin() {
     />
   );
 }
+

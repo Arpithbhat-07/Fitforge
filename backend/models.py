@@ -46,6 +46,11 @@ class HeroContent(BaseDoc):
     ])
 
 
+class SectionState(BaseDoc):
+    hidden: bool = False
+    deleted: bool = False
+
+
 class AboutContent(BaseDoc):
     who_we_are: str = "FitForge is a next-generation fitness collective built for athletes, professionals, and everyday warriors chasing something greater."
     mission: str = "Forge stronger bodies, sharper minds, and unbreakable habits — every single day."
@@ -62,6 +67,8 @@ class AboutContent(BaseDoc):
         {"year": "2022", "title": "New Flagship Facility", "description": "Moved into our 12,000 sq ft flagship with performance zones and recovery suites."},
         {"year": "2025", "title": "2500+ Strong", "description": "A thriving community of athletes forged inside our walls."},
     ])
+    sections: Dict[str, SectionState] = Field(default_factory=dict)
+
 
 
 class ContactContent(BaseDoc):
@@ -114,7 +121,6 @@ class Service(BaseDoc):
     title: str
     description: str
     icon: str = "Dumbbell"
-    image: str = ""
     order: int = 0
     is_active: bool = True
     is_deleted: bool = False
@@ -125,16 +131,16 @@ class ServiceIn(BaseModel):
     title: str
     description: str
     icon: str = "Dumbbell"
-    image: str = ""
     order: int = 0
     is_active: bool = True
+
 
 
 # ---------- Plans ----------
 class Plan(BaseDoc):
     id: str = Field(default_factory=_uid)
     name: str
-    price: str
+    price: int
     period: str = "/month"
     features: List[str] = Field(default_factory=list)
     is_highlighted: bool = False
@@ -146,13 +152,14 @@ class Plan(BaseDoc):
 
 class PlanIn(BaseModel):
     name: str
-    price: str
+    price: int
     period: str = "/month"
     features: List[str] = Field(default_factory=list)
     is_highlighted: bool = False
     cta_label: str = "Get Started"
     order: int = 0
     is_active: bool = True
+
 
 
 # ---------- Trainers ----------

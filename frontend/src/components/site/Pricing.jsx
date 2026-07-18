@@ -1,6 +1,13 @@
 import { motion } from "framer-motion";
 import { Check, Star } from "lucide-react";
 
+const formatCurrency = (val) => {
+  if (val == null) return "";
+  const num = typeof val === "number" ? val : parseFloat(String(val).replace(/[^\d.-]/g, ""));
+  if (isNaN(num)) return String(val);
+  return `₹ ${num.toLocaleString("en-IN")}`;
+};
+
 export default function Pricing({ plans }) {
   return (
     <section id="plans" className="section-y bg-[#0B0B0B] border-t border-[#2A2A2A]" data-testid="plans-section">
@@ -22,7 +29,7 @@ export default function Pricing({ plans }) {
             <motion.div
               key={p.id}
               initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              animate={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.12, duration: 0.6 }}
               className={`relative flex flex-col p-10 border ${p.is_highlighted ? "bg-gradient-to-b from-[#FF5A1F]/10 to-[#171717] border-[#FF5A1F]" : "bg-[#171717] border-[#2A2A2A]"} hover:-translate-y-2 transition-transform duration-300`}
@@ -36,9 +43,10 @@ export default function Pricing({ plans }) {
               <div className="text-xs uppercase tracking-[0.3em] text-[#8A8A8A] mb-4">Plan {i + 1}</div>
               <div className="font-display text-5xl uppercase tracking-wider mb-2">{p.name}</div>
               <div className="flex items-baseline gap-1 mb-8">
-                <span className="font-display text-6xl text-white">{p.price}</span>
+                <span className="font-display text-5xl text-white">{formatCurrency(p.price)}</span>
                 <span className="text-sm text-[#8A8A8A]">{p.period}</span>
               </div>
+
               <ul className="space-y-3 mb-10 flex-1">
                 {p.features.map((f, k) => (
                   <li key={k} className="flex items-start gap-3 text-sm text-[#CFCFCF]">

@@ -36,36 +36,52 @@ export default function About({ about }) {
             transition={{ duration: 0.6, delay: 0.15 }}
             className="lg:col-span-7 lg:pt-10"
           >
-            <p className="text-lg text-[#CFCFCF] leading-relaxed" data-testid="about-who">{about.who_we_are}</p>
+            <p className="text-[#CFCFCF] leading-relaxed text-lg prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: about.who_we_are }} data-testid="about-who" />
           </motion.div>
         </div>
 
         {/* Mission / Vision */}
-        <div className="grid md:grid-cols-2 gap-6 mb-20">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="bg-[#171717] border border-[#2A2A2A] p-10 hover:border-[#FF5A1F]/50 transition-colors relative overflow-hidden group"
-          >
-            <Target className="w-10 h-10 text-[#FF5A1F] mb-6" />
-            <div className="font-display text-3xl uppercase tracking-wider mb-3">Mission</div>
-            <p className="text-[#CFCFCF] leading-relaxed">{about.mission}</p>
-            <div className="absolute -bottom-10 -right-10 w-40 h-40 rounded-full bg-[#FF5A1F]/10 blur-2xl group-hover:bg-[#FF5A1F]/20 transition-colors" />
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.15 }}
-            className="bg-[#171717] border border-[#2A2A2A] p-10 hover:border-[#FF5A1F]/50 transition-colors relative overflow-hidden group"
-          >
-            <Eye className="w-10 h-10 text-[#FF5A1F] mb-6" />
-            <div className="font-display text-3xl uppercase tracking-wider mb-3">Vision</div>
-            <p className="text-[#CFCFCF] leading-relaxed">{about.vision}</p>
-            <div className="absolute -bottom-10 -right-10 w-40 h-40 rounded-full bg-[#FF8A00]/10 blur-2xl group-hover:bg-[#FF8A00]/20 transition-colors" />
-          </motion.div>
-        </div>
+        {(() => {
+          const sections = about.sections || {};
+          const isMissionActive = !sections.mission?.hidden && !sections.mission?.deleted;
+          const isVisionActive = !sections.vision?.hidden && !sections.vision?.deleted;
+          const gridCols = isMissionActive && isVisionActive ? "grid md:grid-cols-2" : "grid grid-cols-1";
+
+          if (!isMissionActive && !isVisionActive) return null;
+
+          return (
+            <div className={`${gridCols} gap-6 mb-20`}>
+              {isMissionActive && (
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  className="bg-[#171717] border border-[#2A2A2A] p-10 hover:border-[#FF5A1F]/50 transition-colors relative overflow-hidden group"
+                >
+                  <Target className="w-10 h-10 text-[#FF5A1F] mb-6" />
+                  <div className="font-display text-3xl uppercase tracking-wider mb-3">Mission</div>
+                  <p className="text-[#CFCFCF] leading-relaxed prose prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: about.mission }} />
+                  <div className="absolute -bottom-10 -right-10 w-40 h-40 rounded-full bg-[#FF5A1F]/10 blur-2xl group-hover:bg-[#FF5A1F]/20 transition-colors" />
+                </motion.div>
+              )}
+              {isVisionActive && (
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.15 }}
+                  className="bg-[#171717] border border-[#2A2A2A] p-10 hover:border-[#FF5A1F]/50 transition-colors relative overflow-hidden group"
+                >
+                  <Eye className="w-10 h-10 text-[#FF5A1F] mb-6" />
+                  <div className="font-display text-3xl uppercase tracking-wider mb-3">Vision</div>
+                  <p className="text-[#CFCFCF] leading-relaxed prose prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: about.vision }} />
+                  <div className="absolute -bottom-10 -right-10 w-40 h-40 rounded-full bg-[#FF8A00]/10 blur-2xl group-hover:bg-[#FF8A00]/20 transition-colors" />
+                </motion.div>
+              )}
+            </div>
+          );
+        })()}
+
 
         {/* Core Values */}
         <div className="mb-20">

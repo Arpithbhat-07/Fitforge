@@ -29,6 +29,52 @@ async def _log(db, user, action, entity, entity_id="", details=""):
     })
 
 
+from revisions import save_revision
+
+async def _reorder_collection(db, coll: str, item_id: str, new_order: int):
+    items = await db[coll].find({"is_deleted": {"$ne": True}}).sort([("order", 1), ("created_at", 1)]).to_list(1000)
+    
+    target_item = None
+    other_items = []
+    for it in items:
+        if it.get("id") == item_id:
+            target_item = it
+        else:
+            other_items.append(it)
+            
+    if not target_item:
+        target_item = await db[coll].find_one({"id": item_id})
+        if not target_item:
+            return
+            
+    target_item.pop("_id", None)
+    for it in other_items:
+        it.pop("_id", None)
+
+    new_list = []
+    inserted = False
+    for idx, it in enumerate(other_items):
+        if len(new_list) == new_order - 1:
+            new_list.append(target_item)
+            inserted = True
+        new_list.append(it)
+        
+    if not inserted:
+        new_list.append(target_item)
+        
+    for idx, it in enumerate(new_list):
+        assigned_order = idx + 1
+        if it.get("order") != assigned_order:
+            await db[coll].update_one({"id": it["id"]}, {"$set": {"order": assigned_order}})
+
+async def _reindex_collection(db, coll: str):
+    items = await db[coll].find({"is_deleted": {"$ne": True}}).sort([("order", 1), ("created_at", 1)]).to_list(1000)
+    for idx, it in enumerate(items):
+        assigned_order = idx + 1
+        if it.get("order") != assigned_order:
+            await db[coll].update_one({"id": it["id"]}, {"$set": {"order": assigned_order}})
+
+
 def _make_collection_routes(name: str, model_cls, input_cls, coll: str, admin_only_read: bool = False):
     """Register public list + admin CRUD for a collection."""
 
@@ -111,23 +157,41 @@ def _make_collection_routes(name: str, model_cls, input_cls, coll: str, admin_on
         db = request.app.state.db
         item = model_cls(**body.model_dump())
         
-        # Enforce draft/publish status field if it exists, default to published
         item_dump = item.model_dump()
         if "is_deleted" not in item_dump:
             item_dump["is_deleted"] = False
             
         await db[coll].insert_one(item_dump)
+        
+        if "order" in model_cls.model_fields:
+            await _reorder_collection(db, coll, item.id, item.order)
+            
+        # Refetch clean inserted item to ensure correct orders are in response
+        inserted_doc = await db[coll].find_one({"id": item.id}, {"_id": 0})
+            
         await _log(db, user, "create", name, item.id, f"Created {name}")
+        
+        # Save revision log
+        await save_revision(
+            db=db,
+            collection=coll,
+            doc_id=item.id,
+            action="create",
+            actor_email=user.get("email"),
+            before=None,
+            after=inserted_doc
+        )
+        
         return standard_response(
             success=True,
             message=f"{name.capitalize()} item created successfully",
-            data=item_dump
+            data=inserted_doc
         )
 
     @router.put(f"/admin/{name}/{{item_id}}")
     async def admin_update(item_id: str, body: input_cls, request: Request, user=Depends(require_admin)):
         db = request.app.state.db
-        old_doc = await db[coll].find_one({"id": item_id})
+        old_doc = await db[coll].find_one({"id": item_id}, {"_id": 0})
         if not old_doc:
             raise HTTPException(status_code=404, detail="Not found")
         updates = body.model_dump()
@@ -141,8 +205,24 @@ def _make_collection_routes(name: str, model_cls, input_cls, coll: str, admin_on
         except Exception as e:
             logger.error(f"Failed to clean up replaced image: {e}")
 
+        if "order" in model_cls.model_fields:
+            await _reorder_collection(db, coll, item_id, updates.get("order", 1))
+
         await _log(db, user, "update", name, item_id, f"Updated {name}")
         updated_doc = await db[coll].find_one({"id": item_id}, {"_id": 0})
+        
+        # Save revision log
+        action_type = request.query_params.get("action", "update")
+        await save_revision(
+            db=db,
+            collection=coll,
+            doc_id=item_id,
+            action=action_type,
+            actor_email=user.get("email"),
+            before=old_doc,
+            after=updated_doc
+        )
+        
         return standard_response(
             success=True,
             message=f"{name.capitalize()} item updated successfully",
@@ -152,19 +232,36 @@ def _make_collection_routes(name: str, model_cls, input_cls, coll: str, admin_on
     @router.delete(f"/admin/{name}/{{item_id}}")
     async def admin_delete(item_id: str, request: Request, user=Depends(require_admin)):
         db = request.app.state.db
-        old_doc = await db[coll].find_one({"id": item_id})
+        old_doc = await db[coll].find_one({"id": item_id}, {"_id": 0})
         if not old_doc:
             raise HTTPException(status_code=404, detail="Not found")
             
         # Soft delete update
-        await db[coll].update_one({"id": item_id}, {"$set": {"is_deleted": True, "deleted_at": _now()}})
+        deleted_time = _now()
+        await db[coll].update_one({"id": item_id}, {"$set": {"is_deleted": True, "deleted_at": deleted_time}})
+        
+        if "order" in model_cls.model_fields:
+            await _reindex_collection(db, coll)
         
         await _log(db, user, "delete", name, item_id, f"Soft-deleted {name}")
+        
+        # Save revision log
+        await save_revision(
+            db=db,
+            collection=coll,
+            doc_id=item_id,
+            action="delete",
+            actor_email=user.get("email"),
+            before=old_doc,
+            after={**old_doc, "is_deleted": True, "deleted_at": deleted_time}
+        )
+        
         return standard_response(
             success=True,
             message=f"{name.capitalize()} item soft-deleted successfully",
             data={"success": True}
         )
+
 
     # rename to avoid duplicate operation IDs
     public_list.__name__ = f"list_{name}"

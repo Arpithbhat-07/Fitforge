@@ -6,10 +6,10 @@ export default function FeaturesAdmin() {
       resource="features"
       title="Why Choose Us"
       subtitle="Highlights"
-      defaultForm={{ title: "", description: "", icon: "ShieldCheck", order: 0, is_active: true }}
+      defaultForm={{ title: "", description: "", icon: "Shield", order: 0, is_active: true }}
       fields={[
         { name: "title", label: "Title", type: "text" },
-        { name: "icon", label: "Lucide Icon", type: "text", placeholder: "Award, Dumbbell..." },
+        { name: "icon", label: "Icon", type: "icon", colSpan: 2 },
         { name: "description", label: "Description", type: "textarea", colSpan: 2, rows: 3 },
         { name: "order", label: "Order", type: "number" },
         { name: "is_active", label: "Active", type: "switch" },
@@ -23,3 +23,4 @@ export default function FeaturesAdmin() {
     />
   );
 }
+

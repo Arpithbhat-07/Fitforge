@@ -12,6 +12,17 @@ logger = logging.getLogger("fitforge.responses")
 # Context var to store request_id for the current task/request
 request_id_ctx = contextvars.ContextVar("request_id", default="")
 
+from bson import ObjectId
+
+def clean_object_ids(val: Any) -> Any:
+    if isinstance(val, dict):
+        return {k: clean_object_ids(v) for k, v in val.items() if k != "_id"}
+    elif isinstance(val, list):
+        return [clean_object_ids(x) for x in val]
+    elif isinstance(val, ObjectId):
+        return str(val)
+    return val
+
 def standard_response(
     success: bool,
     message: str,
@@ -27,13 +38,14 @@ def standard_response(
     content = {
         "success": success,
         "message": message,
-        "data": data,
+        "data": clean_object_ids(data),
         "request_id": req_id
     }
     if not success and error_code:
         content["error"] = error_code
         
     return JSONResponse(status_code=status_code, content=content)
+
 
 async def request_id_middleware(request: Request, call_next):
     # Retrieve request_id from incoming headers or generate a new one

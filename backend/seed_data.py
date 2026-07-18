@@ -25,18 +25,19 @@ SEED_SERVICES = [
 ]
 
 SEED_PLANS = [
-    Plan(name="Starter", price="₹1,499", period="/month", features=[
+    Plan(name="Starter", price=1499, period="/month", features=[
         "Full Gym Access", "Locker Room", "Cardio Zone", "Free WiFi", "Community Events"
     ], is_highlighted=False, order=1),
-    Plan(name="Pro", price="₹2,499", period="/month", features=[
+    Plan(name="Pro", price=2499, period="/month", features=[
         "Everything in Starter", "Unlimited Group Classes", "Nutrition Starter Guide",
         "Progress Tracking", "Guest Passes (2/mo)", "Recovery Zone Access"
     ], is_highlighted=True, cta_label="Most Popular", order=2),
-    Plan(name="Elite", price="₹4,499", period="/month", features=[
+    Plan(name="Elite", price=4499, period="/month", features=[
         "Everything in Pro", "Dedicated Personal Trainer", "Custom Diet Plan",
         "Monthly Body Analysis", "VIP Support & Priority Booking", "Massage & Recovery Sessions"
     ], is_highlighted=False, order=3),
 ]
+
 
 SEED_TRAINERS = [
     Trainer(name="Arjun Kapoor", role="Head Strength Coach", experience="10+ years",

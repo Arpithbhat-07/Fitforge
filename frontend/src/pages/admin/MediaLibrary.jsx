@@ -55,12 +55,6 @@ export default function MediaLibrary() {
     } catch (err) { toast.error(formatApiError(err.response?.data?.detail)); }
   };
 
-  const copyUrl = async (item) => {
-    const full = getMediaUrl(item.url);
-    try { await navigator.clipboard.writeText(full); toast.success("URL copied"); }
-    catch { toast.error("Copy failed"); }
-  };
-
   const totalPages = Math.max(1, Math.ceil(total / 24));
 
   return (
@@ -108,7 +102,6 @@ export default function MediaLibrary() {
               <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-3">
                 <div className="text-[10px] text-[#CFCFCF] truncate">{it.original_filename}</div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => copyUrl(it)} className="p-2 bg-[#171717] hover:bg-[#FF5A1F] transition-colors" title="Copy URL"><Copy className="w-4 h-4" /></button>
                   <button onClick={() => setToDelete(it)} className="p-2 bg-[#171717] hover:bg-[#FF3B30] transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
@@ -116,6 +109,7 @@ export default function MediaLibrary() {
           ))}
         </div>
       )}
+
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-6 text-xs">

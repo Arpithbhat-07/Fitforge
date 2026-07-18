@@ -112,6 +112,22 @@ async def on_startup():
     await seed_admin(db)
     await seed_all(db)
 
+    # Migrations
+    try:
+        # Strip image field from services (Programs)
+        await db.services.update_many({}, {"$unset": {"image": ""}})
+        # Migrate plan prices to integers
+        async for plan in db.plans.find({}):
+            price_val = plan.get("price")
+            if isinstance(price_val, str):
+                clean_price = "".join(c for c in price_val if c.isdigit())
+                if clean_price:
+                    await db.plans.update_one({"id": plan["id"]}, {"$set": {"price": int(clean_price)}})
+        logger.info("Startup migrations completed successfully")
+    except Exception as e:
+        logger.error(f"Startup migrations failed: {e}")
+
+
     # Write test credentials for testing agent (safely for deployment)
     try:
         memory_dir = ROOT_DIR / ".." / "memory"

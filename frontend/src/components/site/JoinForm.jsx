@@ -7,6 +7,13 @@ import { ArrowRight } from "lucide-react";
 const GOALS = ["Weight Loss", "Muscle Gain", "Strength", "Endurance", "Overall Fitness"];
 const TIMES = ["Early Morning", "Morning", "Afternoon", "Evening", "Late Evening"];
 
+const formatCurrency = (val) => {
+  if (val == null) return "";
+  const num = typeof val === "number" ? val : parseFloat(String(val).replace(/[^\d.-]/g, ""));
+  if (isNaN(num)) return String(val);
+  return `₹ ${num.toLocaleString("en-IN")}`;
+};
+
 export default function JoinForm({ plans = [] }) {
   const [form, setForm] = useState({
     name: "", phone: "", email: "",
@@ -77,7 +84,16 @@ export default function JoinForm({ plans = [] }) {
                   <Field label="Phone" required value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} testid="join-phone" />
                   <Field label="Email" required type="email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} testid="join-email" />
                   <Select label="Fitness Goal" value={form.fitness_goal} options={GOALS} onChange={(v) => setForm({ ...form, fitness_goal: v })} testid="join-goal" />
-                  <Select label="Membership Plan" value={form.plan} options={(plans || []).map(p => p.name)} onChange={(v) => setForm({ ...form, plan: v })} testid="join-plan" />
+                  <Select
+                    label="Membership Plan"
+                    value={form.plan}
+                    options={(plans || []).map(p => ({
+                      value: p.name,
+                      label: `${p.name} (${formatCurrency(p.price)}${p.period})`
+                    }))}
+                    onChange={(v) => setForm({ ...form, plan: v })}
+                    testid="join-plan"
+                  />
                   <Select label="Preferred Time" value={form.preferred_time} options={TIMES} onChange={(v) => setForm({ ...form, preferred_time: v })} testid="join-time" />
                 </div>
                 <div className="mt-6">
@@ -111,8 +127,13 @@ function Select({ label, value, options, onChange, testid }) {
     <div>
       <label className="text-xs uppercase tracking-widest text-[#8A8A8A] mb-2 block">{label}</label>
       <select value={value} onChange={(e) => onChange(e.target.value)} className="bg-transparent border-b border-[#2A2A2A] focus:border-[#FF5A1F] outline-none py-2 w-full transition-colors text-white" data-testid={testid}>
-        {options.map((o) => <option key={o} value={o} className="bg-[#0B0B0B]">{o}</option>)}
+        {options.map((o) => {
+          const val = typeof o === "object" ? o.value : o;
+          const lbl = typeof o === "object" ? o.label : o;
+          return <option key={val} value={val} className="bg-[#0B0B0B]">{lbl}</option>;
+        })}
       </select>
     </div>
   );
 }
+

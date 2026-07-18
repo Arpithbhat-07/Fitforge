@@ -18,17 +18,22 @@ export default function RevisionsLog({ collection, documentId, onRestore }) {
     }
   }, [open, collection, documentId]);
 
-  const restore = async (revId) => {
-    if (!window.confirm("Are you sure you want to restore this version? All unsaved edits will be overwritten.")) return;
-    try {
-      const res = await api.post(`/admin/revisions/${revId}/restore`);
-      onRestore(res.data);
-      toast.success("Successfully rolled back to version!");
-      setOpen(false);
-    } catch (err) {
-      toast.error("Failed to restore version.");
+  const restore = (revId) => {
+    const rev = revisions.find(r => r.id === revId);
+    if (!rev) return;
+    
+    const targetState = rev.after_state || rev.before_state;
+    if (!targetState) {
+      toast.error("No state found to restore in this revision.");
+      return;
     }
+
+    if (!window.confirm("Are you sure you want to restore this version? This will load the state into your active workspace. You will need to click 'Save' to commit it to the database.")) return;
+    
+    onRestore(targetState);
+    setOpen(false);
   };
+
 
   return (
     <>

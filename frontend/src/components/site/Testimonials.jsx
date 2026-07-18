@@ -83,19 +83,41 @@ export default function Testimonials({ testimonials }) {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="bg-[#171717] border border-[#2A2A2A] p-8 hover:border-[#FF5A1F]/50 transition-colors"
+              className="bg-[#171717] border border-[#2A2A2A] p-8 hover:border-[#FF5A1F]/50 transition-colors flex flex-col justify-between"
               data-testid={`story-card-${i}`}
             >
-              <Stars rating={t.rating} />
-              <p className="mt-5 text-lg leading-relaxed text-[#CFCFCF]">"{t.story}"</p>
+              <div>
+                {(t.before_image || t.after_image) && (
+                  <div className="grid grid-cols-2 gap-2 mb-6 h-44 overflow-hidden rounded-lg border border-[#2A2A2A]">
+                    <div className="relative h-full">
+                      {t.before_image && (
+                        <>
+                          <img src={t.before_image} alt="Before" loading="lazy" className="w-full h-full object-cover grayscale" />
+                          <span className="absolute top-2 left-2 text-[8px] uppercase tracking-widest bg-[#0B0B0B]/70 px-2 py-0.5 text-white">Before</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="relative h-full">
+                      {t.after_image && (
+                        <>
+                          <img src={t.after_image} alt="After" loading="lazy" className="w-full h-full object-cover" />
+                          <span className="absolute top-2 left-2 text-[8px] uppercase tracking-widest bg-[#FF5A1F] px-2 py-0.5 text-white">After</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <Stars rating={t.rating} />
+                <p className="mt-5 text-sm md:text-base leading-relaxed text-[#CFCFCF]">"{t.story}"</p>
+              </div>
               <div className="mt-6 flex items-center gap-3">
                 {t.avatar ? (
-                  <img src={t.avatar} alt={t.name} className="w-12 h-12 object-cover" />
+                  <img src={t.avatar} alt={t.name} className="w-12 h-12 object-cover rounded-full border border-[#2A2A2A]" />
                 ) : (
-                  <div className="w-12 h-12 bg-[#FF5A1F]/20 border border-[#FF5A1F] flex items-center justify-center font-display text-xl text-[#FF5A1F]">{t.name[0]}</div>
+                  <div className="w-12 h-12 bg-[#FF5A1F]/20 border border-[#FF5A1F] flex items-center justify-center font-display text-xl text-[#FF5A1F] rounded-full">{t.name[0]}</div>
                 )}
                 <div>
-                  <div className="font-bold">{t.name}</div>
+                  <div className="font-bold text-white text-sm">{t.name}</div>
                   <div className="text-xs uppercase tracking-widest text-[#8A8A8A]">{t.role}</div>
                 </div>
               </div>

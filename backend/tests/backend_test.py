@@ -5,8 +5,36 @@ import uuid
 import pytest
 import requests
 
+# Monkey-patch requests Response.json to transparently unwrap standard response envelope
+_original_json = requests.models.Response.json
+def _wrapped_json(self, *args, **kwargs):
+    res = _original_json(self, *args, **kwargs)
+    if isinstance(res, dict) and "success" in res and "data" in res:
+        data = res["data"]
+        # If this is an admin list call for catalog resources, return the raw list of items
+        if isinstance(data, dict) and "items" in data:
+            url_path = self.url.split('?')[0].rstrip('/')
+            catalog_resources = ["services", "plans", "trainers", "testimonials", "faqs", "schedule", "gallery", "features"]
+            if any(url_path.endswith(f"/admin/{x}") for x in catalog_resources):
+                return data["items"]
+        
+        # If data is a dictionary, merge top-level envelope keys into it for compatibility
+        if isinstance(data, dict):
+            merged = {
+                "success": res.get("success"),
+                "message": res.get("message"),
+                "request_id": res.get("request_id")
+            }
+            merged.update(data)
+            return merged
+        return data
+    return res
+requests.models.Response.json = _wrapped_json
+
+
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8000').rstrip('/')
 API = f"{BASE_URL}/api"
+
 
 ADMIN_EMAIL = "admin@fitforge.com"
 ADMIN_PASSWORD = "FitForge@2026"

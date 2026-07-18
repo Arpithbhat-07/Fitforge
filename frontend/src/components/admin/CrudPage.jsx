@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Pencil, Trash2, Search, X, Loader2, Save, GripVertical, Eye, EyeOff, Copy } from "lucide-react";
-import { api, formatApiError, getMediaUrl } from "@/lib/api";
+import { Plus, Pencil, Trash2, Search, X, Loader2, Save } from "lucide-react";
+import { api, formatApiError } from "@/lib/api";
 import { toast } from "sonner";
-import { PageHeader, Button, Card, Input, Textarea, Select, Switch, Badge } from "@/components/admin/ui";
-import ConfirmDialog from "@/components/admin/ConfirmDialog";
+import { PageHeader, Button, Card, Input, Textarea, Select, Switch } from "@/components/admin/ui";
 import RichTextEditor from "./RichTextEditor";
 import RevisionsLog from "./RevisionsLog";
+import MediaSelector from "./MediaSelector";
+import IconPicker from "./IconPicker";
 
 /**
  * Generic admin CRUD page.
@@ -28,7 +29,7 @@ export default function CrudPage({ resource, title, subtitle, fields, columns, d
   const load = () => {
     setLoading(true);
     api.get(`/admin/${resource}`, { params: q ? { q } : {} })
-      .then((r) => setItems(r.data.items || r.data || [])) // supports paginated and unpaginated standard returns
+      .then((r) => setItems(r.data.items || r.data || []))
       .catch(() => toast.error("Failed to load"))
       .finally(() => setLoading(false));
   };
@@ -97,22 +98,6 @@ export default function CrudPage({ resource, title, subtitle, fields, columns, d
     finally { setSaving(false); }
   };
 
-  const duplicate = async (item) => {
-    try {
-      const payload = { ...item };
-      delete payload.id; delete payload._id; delete payload.created_at; delete payload.updated_at;
-      
-      const copyFields = ["name", "title", "caption", "class_name", "question"];
-      copyFields.forEach(f => {
-        if (payload[f]) payload[f] = `${payload[f]} (Copy)`;
-      });
-
-      await api.post(`/admin/${resource}`, payload);
-      toast.success("Successfully duplicated record");
-      load();
-    } catch (err) { toast.error(formatApiError(err.response?.data?.detail)); }
-  };
-
   const doDelete = async () => {
     try {
       await api.delete(`/admin/${resource}/${toDelete.id}`);
@@ -167,9 +152,6 @@ export default function CrudPage({ resource, title, subtitle, fields, columns, d
                   ))}
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => duplicate(item)} className="p-2 hover:text-[#FF8A00] transition-colors" aria-label="Duplicate" title="Duplicate">
-                        <Copy className="w-4 h-4" />
-                      </button>
                       <button onClick={() => openEdit(item)} className="p-2 hover:text-[#FF5A1F] transition-colors" aria-label="Edit" data-testid={`${resource}-edit-${i}`}>
                         <Pencil className="w-4 h-4" />
                       </button>
@@ -209,7 +191,7 @@ export default function CrudPage({ resource, title, subtitle, fields, columns, d
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#0B0B0B] border border-[#2A2A2A] max-w-3xl w-full my-8 relative"
+              className="bg-[#0B0B0B] border border-[#2A2A2A] max-w-3xl w-full my-8 relative rounded-xl"
               data-testid={`${resource}-modal`}
             >
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#FF5A1F] to-[#FF8A00]" />
@@ -234,7 +216,7 @@ export default function CrudPage({ resource, title, subtitle, fields, columns, d
               </div>
               
               {isDirty && (
-                <div className="bg-[#FF5A1F]/10 border-b border-[#FF5A1F]/20 text-[#FF5A1F] text-[10px] uppercase py-2 px-6 tracking-widest font-semibold">
+                <div className="bg-[#FF5A1F]/10 border-b border-[#FF5A1F]/20 text-[#FF5A1F] text-[10px] uppercase py-2 px-6 tracking-widest font-semibold animate-pulse">
                   * Unsaved Changes in Item Draft Workspace
                 </div>
               )}
@@ -242,7 +224,7 @@ export default function CrudPage({ resource, title, subtitle, fields, columns, d
               <div className="p-6 grid md:grid-cols-2 gap-4 max-h-[70vh] overflow-y-auto">
                 {fields.map((f) => (
                   <div key={f.name} className={f.colSpan === 2 || f.type === "richtext" ? "md:col-span-2" : ""}>
-                    <FieldRenderer field={f} value={form[f.name]} onChange={(v) => updateForm({ [f.name]: v })} />
+                    <FieldRenderer field={f} value={form[f.name]} onChange={(v) => updateForm({ [f.name]: v })} resource={resource} />
                     {f.help && <div className="text-[10px] text-[#8A8A8A] mt-1">{f.help}</div>}
                   </div>
                 ))}
@@ -270,7 +252,38 @@ export default function CrudPage({ resource, title, subtitle, fields, columns, d
   );
 }
 
-function FieldRenderer({ field, value, onChange }) {
+function ListField({ label, value, onChange, placeholder, rows }) {
+  const [text, setText] = useState(() => (Array.isArray(value) ? value.join("\n") : ""));
+
+  useEffect(() => {
+    const parentText = Array.isArray(value) ? value.join("\n") : "";
+    if (parentText !== text) {
+      setText(parentText);
+    }
+  }, [value]);
+
+  const handleChange = (e) => {
+    const val = e.target.value;
+    setText(val);
+    const parsed = val.split("\n").map(s => s.trim()).filter(Boolean);
+    onChange(parsed);
+  };
+
+  return (
+    <div>
+      <label className="text-xs uppercase tracking-widest text-[#8A8A8A] mb-2 block">{label}</label>
+      <textarea
+        value={text}
+        onChange={handleChange}
+        rows={rows || 4}
+        placeholder={placeholder || "One item per line"}
+        className="bg-[#0B0B0B] border border-[#2A2A2A] focus:border-[#FF5A1F] outline-none py-2.5 px-3 w-full transition-colors text-white text-sm"
+      />
+    </div>
+  );
+}
+
+function FieldRenderer({ field, value, onChange, resource }) {
   const label = field.label;
 
   if (field.type === "textarea") {
@@ -298,18 +311,13 @@ function FieldRenderer({ field, value, onChange }) {
     );
   }
   if (field.type === "list") {
-    // Comma-separated list or newline-separated
-    const arr = Array.isArray(value) ? value : [];
+    return <ListField label={label} value={value} onChange={onChange} placeholder={field.placeholder} rows={field.rows} />;
+  }
+  if (field.type === "icon") {
     return (
       <div>
         <label className="text-xs uppercase tracking-widest text-[#8A8A8A] mb-2 block">{label}</label>
-        <textarea
-          value={arr.join("\n")}
-          onChange={(e) => onChange(e.target.value.split("\n").map(s => s.trim()).filter(Boolean))}
-          rows={field.rows || 4}
-          placeholder={field.placeholder || "One item per line"}
-          className="bg-[#0B0B0B] border border-[#2A2A2A] focus:border-[#FF5A1F] outline-none py-2.5 px-3 w-full transition-colors text-white text-sm"
-        />
+        <IconPicker value={value ?? "Dumbbell"} onChange={onChange} />
       </div>
     );
   }
@@ -337,51 +345,12 @@ function FieldRenderer({ field, value, onChange }) {
     );
   }
   if (field.type === "image") {
-    return <ImageField label={label} value={value} onChange={onChange} />;
-  }
-  // default text
-  return <Input label={label} value={value ?? ""} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} />;
-}
-
-function ImageField({ label, value, onChange }) {
-  const [uploading, setUploading] = useState(false);
-
-  const upload = async (file) => {
-    if (!file) return;
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const { data } = await api.post("/admin/media/upload?folder=content", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      const url = getMediaUrl(data.url);
-      onChange(url);
-      toast.success("Image uploaded");
-    } catch (err) {
-      toast.error(formatApiError(err.response?.data?.detail));
-    } finally { setUploading(false); }
-  };
-
-  return (
-    <div>
-      <label className="text-xs uppercase tracking-widest text-[#8A8A8A] mb-2 block">{label}</label>
-      <div className="flex flex-wrap gap-3 items-start">
-        {value ? (
-          <img src={value} alt="" className="w-32 h-32 object-cover border border-[#2A2A2A]" />
-        ) : (
-          <div className="w-32 h-32 border-2 border-dashed border-[#2A2A2A] flex items-center justify-center text-xs text-[#8A8A8A]">No image</div>
-        )}
-        <div className="flex-1 space-y-2 min-w-[200px]">
-          <input value={value ?? ""} onChange={(e) => onChange(e.target.value)} placeholder="Paste URL or upload" className="bg-[#0B0B0B] border border-[#2A2A2A] focus:border-[#FF5A1F] outline-none py-2.5 px-3 w-full text-sm" />
-          <label className="inline-flex items-center gap-2 cursor-pointer border border-[#2A2A2A] hover:border-[#FF5A1F] px-3 py-2 text-xs uppercase tracking-widest transition-colors">
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files?.[0])} />
-            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-            {uploading ? "Uploading" : "Upload"}
-          </label>
-          {value && <button type="button" onClick={() => onChange("")} className="ml-2 text-xs text-[#FF3B30] hover:underline">Remove</button>}
-        </div>
+    return (
+      <div>
+        <label className="text-xs uppercase tracking-widest text-[#8A8A8A] mb-2 block">{label}</label>
+        <MediaSelector value={value ?? ""} onChange={onChange} folder={resource} />
       </div>
-    </div>
-  );
+    );
+  }
+  return <Input label={label} value={value ?? ""} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} />;
 }

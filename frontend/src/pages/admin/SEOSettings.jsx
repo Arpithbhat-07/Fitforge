@@ -12,11 +12,12 @@ export default function SEOSettings() {
         { name: "meta_keywords", label: "Meta Keywords", colSpan: 2 },
         { name: "og_title", label: "OG Title" },
         { name: "og_description", label: "OG Description" },
-        { name: "og_image", label: "OG Image URL", colSpan: 2 },
+        { name: "og_image", label: "OG Image", type: "image", colSpan: 2 },
         { name: "twitter_card", label: "Twitter Card Type" },
         { name: "robots", label: "Robots" },
-        { name: "favicon_url", label: "Favicon URL", colSpan: 2 },
+        { name: "favicon_url", label: "Favicon Image", type: "image", colSpan: 2 },
         { name: "google_analytics_id", label: "Google Analytics ID" },
+
       ]}
     />
   );

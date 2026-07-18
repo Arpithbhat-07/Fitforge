@@ -641,23 +641,72 @@ async def mail_test_send(payload: dict, request: Request, _=Depends(require_admi
 
 
 @router.get("/admin/trash")
-async def list_trash(request: Request, _=Depends(require_admin)):
+async def get_trash_list(request: Request, _=Depends(require_admin)):
+    from datetime import datetime as _now
     db = request.app.state.db
-    collections = ["services", "plans", "trainers", "testimonials", "faqs", "schedule", "gallery", "features"]
     trash_items = []
-    for coll in collections:
+    
+    # 1. Dynamic catalog collections
+    for coll in ("services", "plans", "trainers", "testimonials", "faqs",
+                 "schedule", "gallery", "features"):
         cursor = db[coll].find({"is_deleted": True})
         async for doc in cursor:
             doc["_id"] = str(doc["_id"])
             doc["collection"] = coll
             doc["display_name"] = doc.get("name") or doc.get("title") or doc.get("caption") or doc.get("question") or doc.get("class_name") or doc.get("id")
             trash_items.append(doc)
+            
+    # 2. Content singleton sections
+    cursor = db.content.find({})
+    async for doc in cursor:
+        doc_key = doc.get("_key")
+        sections = doc.get("sections", {})
+        if sections and isinstance(sections, dict):
+            for sec_name, sec_state in sections.items():
+                if sec_state and isinstance(sec_state, dict) and sec_state.get("deleted"):
+                    trash_items.append({
+                        "id": f"content:{doc_key}:{sec_name}",
+                        "collection": "content_sections",
+                        "display_name": f"{doc_key.capitalize()} - {sec_name.capitalize()}",
+                        "deleted_at": doc.get("updated_at") or _now(),
+                    })
+                    
     return standard_response(success=True, message="Trash list retrieved", data=trash_items)
 
 
 @router.post("/admin/trash/{collection}/{doc_id}/restore")
 async def restore_trash_item(collection: str, doc_id: str, request: Request, user=Depends(require_admin)):
     db = request.app.state.db
+    
+    if collection == "content_sections":
+        parts = doc_id.split(":")
+        if len(parts) == 3:
+            doc_key = parts[1]
+            sec_name = parts[2]
+            
+            doc = await db.content.find_one({"_key": doc_key})
+            if not doc:
+                raise HTTPException(status_code=404, detail="Section content not found")
+                
+            await db.content.update_one(
+                {"_key": doc_key},
+                {"$set": {f"sections.{sec_name}.deleted": False}}
+            )
+            
+            # Save revision log
+            from revisions import save_revision
+            await save_revision(
+                db=db,
+                collection="content",
+                doc_id=doc_key,
+                action="restore",
+                actor_email=user.get("email"),
+                before=doc,
+                after={**doc, "sections": {**doc.get("sections", {}), sec_name: {**doc.get("sections", {}).get(sec_name, {}), "deleted": False}}}
+            )
+            return standard_response(success=True, message="Section successfully restored from trash")
+        raise HTTPException(status_code=400, detail="Invalid section ID")
+        
     doc = await db[collection].find_one({"id": doc_id})
     if not doc:
         raise HTTPException(status_code=404, detail="Item not found in trash")
@@ -681,6 +730,36 @@ async def restore_trash_item(collection: str, doc_id: str, request: Request, use
 @router.delete("/admin/trash/{collection}/{doc_id}/permanent")
 async def permanent_delete_item(collection: str, doc_id: str, request: Request, user=Depends(require_admin)):
     db = request.app.state.db
+    
+    if collection == "content_sections":
+        parts = doc_id.split(":")
+        if len(parts) == 3:
+            doc_key = parts[1]
+            sec_name = parts[2]
+            
+            doc = await db.content.find_one({"_key": doc_key})
+            if not doc:
+                raise HTTPException(status_code=404, detail="Section not found")
+                
+            await db.content.update_one(
+                {"_key": doc_key},
+                {"$set": {sec_name: ""}, "$unset": {f"sections.{sec_name}": ""}}
+            )
+            
+            # Save revision log
+            from revisions import save_revision
+            await save_revision(
+                db=db,
+                collection="content",
+                doc_id=doc_key,
+                action="permanent_delete",
+                actor_email=user.get("email"),
+                before=doc,
+                after=None
+            )
+            return standard_response(success=True, message="Section permanently deleted")
+        raise HTTPException(status_code=400, detail="Invalid section ID")
+        
     doc = await db[collection].find_one({"id": doc_id})
     if not doc:
         raise HTTPException(status_code=404, detail="Item not found")

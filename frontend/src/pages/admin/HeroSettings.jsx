@@ -12,8 +12,9 @@ export default function HeroSettings() {
         { name: "description", label: "Description", type: "textarea", colSpan: 2 },
         { name: "cta_primary_label", label: "Primary CTA Label" },
         { name: "cta_secondary_label", label: "Secondary CTA Label" },
-        { name: "background_image", label: "Background Image URL", colSpan: 2 },
+        { name: "background_image", label: "Background Image", type: "image", colSpan: 2 },
         { name: "stats", label: "Stats", type: "objectlist", keys: ["value", "label"] },
+
       ]}
     />
   );

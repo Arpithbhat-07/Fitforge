@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Loader2, Save, Plus, Trash2, Eye, EyeOff, Send } from "lucide-react";
+import { Loader2, Save, Plus, Trash2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { api, formatApiError } from "@/lib/api";
 import { PageHeader, Button, Card, Input, Textarea } from "@/components/admin/ui";
 import RichTextEditor from "./RichTextEditor";
 import RevisionsLog from "./RevisionsLog";
+import MediaSelector from "./MediaSelector";
 
 /**
  * Reusable settings page for singleton content documents.
@@ -14,7 +15,6 @@ export default function SettingsForm({ endpoint, title, subtitle, schema }) {
   const [originalData, setOriginalData] = useState(null);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [showPreview, setShowPreview] = useState(true);
   const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
@@ -41,6 +41,16 @@ export default function SettingsForm({ endpoint, title, subtitle, schema }) {
 
   const setField = (name, value) => {
     const next = { ...data, [name]: value };
+    setData(next);
+    setIsDirty(JSON.stringify(next) !== JSON.stringify(originalData));
+  };
+
+  const toggleSectionState = (name, key) => {
+    const currentSections = data.sections || {};
+    const currentSecState = currentSections[name] || { hidden: false, deleted: false };
+    const nextSecState = { ...currentSecState, [key]: !currentSecState[key] };
+    const nextSections = { ...currentSections, [name]: nextSecState };
+    const next = { ...data, sections: nextSections };
     setData(next);
     setIsDirty(JSON.stringify(next) !== JSON.stringify(originalData));
   };
@@ -81,9 +91,8 @@ export default function SettingsForm({ endpoint, title, subtitle, schema }) {
 
   const handleRestore = (restoredState) => {
     setData(restoredState);
-    setOriginalData(JSON.parse(JSON.stringify(restoredState)));
-    setIsDirty(false);
-    toast.success("Restored previous revision into workspace!");
+    setIsDirty(JSON.stringify(restoredState) !== JSON.stringify(originalData));
+    toast.success("Restored previous revision into workspace! Click Save Draft to commit.");
   };
 
   if (!data) return <div className="text-[#8A8A8A] flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>;
@@ -97,11 +106,6 @@ export default function SettingsForm({ endpoint, title, subtitle, schema }) {
           <div className="flex items-center gap-2 flex-wrap">
             <RevisionsLog collection="content" documentId={endpoint} onRestore={handleRestore} />
             
-            <Button type="button" variant="secondary" onClick={() => setShowPreview(!showPreview)}>
-              {showPreview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              {showPreview ? "Hide Preview" : "Live Preview"}
-            </Button>
-
             <Button type="button" onClick={save} disabled={saving} data-testid={`${endpoint}-save`}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {saving ? "Saving" : "Save Draft"}
@@ -121,9 +125,9 @@ export default function SettingsForm({ endpoint, title, subtitle, schema }) {
         </div>
       )}
 
-      <div className="flex flex-col lg:flex-row gap-8 items-start">
-        {/* Left Form Panel */}
-        <form onSubmit={save} className="flex-1 w-full space-y-6">
+      <div className="w-full">
+        {/* Full Width Form Panel */}
+        <form onSubmit={save} className="w-full space-y-6">
           <Card>
             <div className="grid md:grid-cols-2 gap-6">
               {schema.map((f) => (
@@ -132,31 +136,73 @@ export default function SettingsForm({ endpoint, title, subtitle, schema }) {
                   field={f}
                   value={data[f.name]}
                   onChange={(v) => setField(f.name, v)}
+                  sections={data.sections || {}}
+                  onToggleSection={(key) => toggleSectionState(f.name, key)}
                 />
               ))}
             </div>
           </Card>
         </form>
-
-        {/* Right Live Preview Panel */}
-        {showPreview && (
-          <div className="w-full lg:w-96 shrink-0 lg:sticky lg:top-24 space-y-4">
-            <div className="text-xs uppercase tracking-widest text-[#8A8A8A] font-bold px-1">Live Side-By-Side Preview</div>
-            <LivePreviewPanel endpoint={endpoint} data={data} />
-          </div>
-        )}
       </div>
     </div>
   );
 }
 
-function FieldBlock({ field, value, onChange }) {
+function FieldBlock({ field, value, onChange, sections, onToggleSection }) {
   const wrap = field.colSpan === 2 || field.type === "array" || field.type === "objectlist" || field.type === "keyvalue" || field.type === "richtext" ? "md:col-span-2" : "";
+  const secState = field.optional ? (sections[field.name] || { hidden: false, deleted: false }) : { hidden: false, deleted: false };
+
+  if (field.optional && secState.deleted) {
+    return (
+      <div className={`${wrap} border border-dashed border-red-500/20 bg-red-500/5 rounded-xl p-6 text-center space-y-3`}>
+        <div className="text-sm font-semibold text-red-400">Section "{field.label}" has been soft-deleted</div>
+        <p className="text-xs text-gray-500">It is removed from the public website and the editing form. You can restore it here or in the Trash Bin.</p>
+        <button
+          type="button"
+          onClick={() => onToggleSection("deleted")}
+          className="bg-[#1C1C1C] border border-[#2A2A2A] text-xs font-semibold px-4 py-2 hover:bg-[#222] text-white rounded-lg transition-colors"
+        >
+          Restore Section
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className={wrap}>
+    <div className={`${wrap} space-y-2`}>
+      {field.optional && (
+        <div className="flex items-center justify-between bg-[#121212] px-3 py-1.5 rounded-lg border border-[#222]">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{field.label} Visibility</span>
+            <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${
+              secState.hidden ? "bg-yellow-500/10 text-yellow-500" : "bg-green-500/10 text-green-500"
+            }`}>
+              {secState.hidden ? "Hidden" : "Visible"}
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => onToggleSection("hidden")}
+              className="text-[10px] uppercase font-bold text-[#FF5A1F] hover:underline"
+            >
+              {secState.hidden ? "Show" : "Hide"}
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleSection("deleted")}
+              className="text-[10px] uppercase font-bold text-red-500 hover:underline"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
+      
       {(() => {
         if (field.type === "textarea") return <Textarea label={field.label} rows={field.rows || 4} value={value ?? ""} onChange={(e) => onChange(e.target.value)} />;
         if (field.type === "richtext") return <RichTextEditor label={field.label} value={value ?? ""} onChange={onChange} />;
+        if (field.type === "image") return <MediaSelector value={value ?? ""} onChange={onChange} folder={field.name} />;
         if (field.type === "switch") return (
           <div>
             <label className="text-xs uppercase tracking-widest text-[#8A8A8A] mb-2 block">{field.label}</label>
@@ -198,7 +244,7 @@ function ObjectListEditor({ label, value, onChange, keys }) {
           <div key={i} className="border border-[#2A2A2A] p-3 flex gap-2 items-start">
             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
               {keys.map(k => (
-                <input key={k} placeholder={k} value={row[k] || ""} onChange={(e) => update(i, k, e.target.value)} className="bg-[#0B0B0B] border border-[#2A2A2A] focus:border-[#FF5A1F] outline-none py-2 px-3 text-sm" />
+                <input key={k} placeholder={k} value={row[k] || ""} onChange={(e) => update(i, k, e.target.value)} className="bg-[#0B0B0B] border border-[#2A2A2A] focus:border-[#FF5A1F] outline-none py-2 px-3 text-sm animate-in fade-in" />
               ))}
             </div>
             <button type="button" onClick={() => remove(i)} className="p-2 text-[#FF3B30] hover:bg-[#FF3B30]/10" aria-label="Remove"><Trash2 className="w-4 h-4" /></button>
@@ -232,74 +278,13 @@ function KeyValueEditor({ label, value, onChange }) {
       </div>
       <div className="space-y-2">
         {entries.map(([k, v], i) => (
-          <div key={i} className="flex gap-2">
+          <div key={i} className="flex gap-2 animate-in fade-in">
             <input placeholder="key" value={k} onChange={(e) => setKey(i, e.target.value)} className="w-40 bg-[#0B0B0B] border border-[#2A2A2A] focus:border-[#FF5A1F] outline-none py-2 px-3 text-sm" />
             <input placeholder="value" value={v} onChange={(e) => setVal(i, e.target.value)} className="flex-1 bg-[#0B0B0B] border border-[#2A2A2A] focus:border-[#FF5A1F] outline-none py-2 px-3 text-sm" />
             <button type="button" onClick={() => remove(i)} className="p-2 text-[#FF3B30] hover:bg-[#FF3B30]/10" aria-label="Remove"><Trash2 className="w-4 h-4" /></button>
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-
-function LivePreviewPanel({ endpoint, data }) {
-  if (endpoint === "hero") {
-    return (
-      <div className="bg-black border border-[#2A2A2A] p-8 min-h-[320px] flex flex-col justify-center relative overflow-hidden text-left rounded-md">
-        {data.image && (
-          <img src={data.image} alt="Hero" className="absolute inset-0 w-full h-full object-cover opacity-25" />
-        )}
-        <div className="relative z-10 space-y-4">
-          <div className="text-[10px] text-[#FF5A1F] uppercase tracking-[0.2em] font-bold">{data.badge || "FITFORGE"}</div>
-          <h1 className="font-display text-3xl uppercase tracking-wider text-white leading-tight">{data.title || "Forge Your Body"}</h1>
-          <p className="text-xs text-gray-400 max-w-[240px]">{data.subtitle || "Elite training facility."}</p>
-          <div className="flex gap-2">
-            <button type="button" className="bg-[#FF5A1F] text-black text-[9px] uppercase font-bold py-2.5 px-4 tracking-widest">{data.primary_cta || "Join Now"}</button>
-            <button type="button" className="border border-white text-white text-[9px] uppercase font-bold py-2.5 px-4 tracking-widest">{data.secondary_cta || "View Schedule"}</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
-  if (endpoint === "about") {
-    return (
-      <div className="bg-[#171717] border border-[#2A2A2A] p-6 space-y-5 text-left rounded-md">
-        <h2 className="font-display text-xl uppercase text-white tracking-wide border-b border-[#2A2A2A] pb-2">About FitForge</h2>
-        <div className="space-y-4 text-[11px] text-gray-300">
-          <div>
-            <strong className="text-[#FF5A1F] block uppercase tracking-widest text-[9px] mb-1">Who We Are</strong>
-            <p className="leading-relaxed">{data.who_we_are || "We are a community..."}</p>
-          </div>
-          <div>
-            <strong className="text-[#FF5A1F] block uppercase tracking-widest text-[9px] mb-1">Our Mission</strong>
-            <p className="leading-relaxed">{data.mission || "To forge athletes..."}</p>
-          </div>
-          {data.core_values && (
-            <div>
-              <strong className="text-[#FF5A1F] block uppercase tracking-widest text-[9px] mb-1">Core Values</strong>
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                {data.core_values.map((v, i) => (
-                  <div key={i} className="bg-[#0B0B0B] p-2 border border-[#2A2A2A]">
-                    <div className="font-semibold text-white text-[9px]">{v.title}</div>
-                    <div className="text-[8px] text-gray-500 mt-1 leading-normal">{v.description}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-  
-  // fallback simple JSON preview
-  return (
-    <div className="bg-[#0B0B0B] border border-[#2A2A2A] p-4 rounded-md text-left">
-      <div className="text-[10px] uppercase text-[#8A8A8A] mb-2 font-mono tracking-widest">CMS Data Feed</div>
-      <pre className="text-[9px] text-gray-400 overflow-x-auto font-mono max-h-96">{JSON.stringify(data, null, 2)}</pre>
     </div>
   );
 }
