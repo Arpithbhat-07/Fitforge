@@ -8,6 +8,7 @@ import RichTextEditor from "./RichTextEditor";
 import RevisionsLog from "./RevisionsLog";
 import MediaSelector from "./MediaSelector";
 import IconPicker from "./IconPicker";
+import ConfirmDialog from "./ConfirmDialog";
 
 /**
  * Generic admin CRUD page.
@@ -88,6 +89,32 @@ export default function CrudPage({ resource, title, subtitle, fields, columns, d
     try {
       const payload = { ...form };
       delete payload.id; delete payload.created_at; delete payload._id;
+      
+      // Clean and sanitize list-type fields (features, certifications, etc.)
+      fields.forEach(f => {
+        if (f.type === "list" && Array.isArray(payload[f.name])) {
+          const cleaned = payload[f.name].map(item => (typeof item === 'string' ? item.trim() : ''));
+          const result = [];
+          for (let i = 0; i < cleaned.length; i++) {
+            const current = cleaned[i];
+            if (current === '') {
+              if (result.length > 0 && result[result.length - 1] !== '') {
+                result.push('');
+              }
+            } else {
+              result.push(current);
+            }
+          }
+          while (result.length > 0 && result[result.length - 1] === '') {
+            result.pop();
+          }
+          while (result.length > 0 && result[0] === '') {
+            result.shift();
+          }
+          payload[f.name] = result;
+        }
+      });
+
       if (editingId) await api.put(`/admin/${resource}/${editingId}`, payload);
       else await api.post(`/admin/${resource}`, payload);
       toast.success(editingId ? "Updated" : "Created");
@@ -265,7 +292,7 @@ function ListField({ label, value, onChange, placeholder, rows }) {
   const handleChange = (e) => {
     const val = e.target.value;
     setText(val);
-    const parsed = val.split("\n").map(s => s.trim()).filter(Boolean);
+    const parsed = val.replace(/\r\n/g, "\n").split("\n");
     onChange(parsed);
   };
 
